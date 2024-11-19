@@ -1,0 +1,14 @@
+[package]
+name = "nrf24"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bitfield = "0.17.0"
+embedded-hal = "1.0.0"
+embedded-hal-bus = "0.1.0"
+nb.workspace = true
+
+[features]
+default = ["std"]
+std = []
