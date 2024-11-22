@@ -4,12 +4,12 @@ mod registers;
 
 use core::fmt::Debug;
 
-use registers::*;
 use embedded_hal::{
 	delay::DelayNs,
 	digital::OutputPin,
 	spi::{Operation, SpiDevice},
 };
+use registers::*;
 
 use Error::Pin;
 #[derive(Debug)]
@@ -71,10 +71,10 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 
 	// ------------- Low Level Operations ---------------
 	fn ce_enable(&mut self) -> Result<(), Error<SPI::Error, CE::Error>> {
-		Ok(self.ce.set_high().map_err(Pin)?)
+		self.ce.set_high().map_err(Pin)
 	}
 	fn ce_disable(&mut self) -> Result<(), Error<SPI::Error, CE::Error>> {
-		Ok(self.ce.set_low().map_err(Pin)?)
+		self.ce.set_low().map_err(Pin)
 	}
 
 	/// Executable in power down or standby modes only.
@@ -257,7 +257,6 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 		self.flush_tx()?;
 		Ok(())
 	}
-	
 }
 
 impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
@@ -361,16 +360,14 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 		payload_type: PayloadType,
 		delay: &mut T,
 	) -> Result<(), Error<SPI::Error, CE::Error>> {
-		if self.config.prim_rx() == true {
+		if self.config.prim_rx() {
 			return Err(Error::NotInTxMode);
 		}
-		if payload.len() > 32 || payload.len() == 0 {
+		if payload.len() > 32 || payload.is_empty() {
 			return Err(Error::PayloadWidthInvalid);
 		}
-		if CHECK_FIFO_OVERFLOW {
-			if self.nop()?.tx_full() {
-				return Err(Error::TxFifoFull);
-			}
+		if CHECK_FIFO_OVERFLOW && self.nop()?.tx_full() {
+			return Err(Error::TxFifoFull);
 		}
 		self.clear_interrupts(MAX_RT_FLAG | TX_DS_FLAG)?;
 		self.write_payload(payload, payload_type)?;
@@ -419,7 +416,7 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 	pub fn receive_maybe(
 		&mut self,
 	) -> Result<Option<(u8, [u8; 32])>, Error<SPI::Error, CE::Error>> {
-		if self.config.prim_rx() == false {
+		if !self.config.prim_rx() {
 			return Err(Error::NotInRxMode);
 		}
 
