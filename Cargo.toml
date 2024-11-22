@@ -10,5 +10,4 @@ embedded-hal-bus = "0.1.0"
 nb.workspace = true
 
 [features]
-default = ["std"]
 std = []
