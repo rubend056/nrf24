@@ -9,13 +9,14 @@ use embedded_hal::{
 	digital::OutputPin,
 	spi::{Operation, SpiDevice},
 };
+use errors::Discriminant;
 use registers::*;
 
 use Error::Pin;
 #[derive(Debug)]
 #[repr(u8)]
 pub enum Error<SPIE, PINE> {
-	Spi(SPIE) = 10,
+	Spi(SPIE) = 0,
 	Pin(PINE),
 	// other custom errors
 	TxFifoFull,
@@ -25,14 +26,20 @@ pub enum Error<SPIE, PINE> {
 	PayloadWidthInvalid,
 	PipeInvalid,
 	AddrTooLong,
+	AddrTooShort,
 }
+const ERROR_MAX: u8 = 20;
+
 // So we can pull the u8 value out of it
-impl<SPIE, PINE> Error<SPIE, PINE> {
-	pub fn discriminant(&self) -> u8 {
+impl<SPIE, PINE> Discriminant for Error<SPIE, PINE> {
+	fn discriminant(&self) -> u8 {
 		// SAFETY: Because `Self` is marked `repr(u8)`, its layout is a `repr(C)` `union`
 		// between `repr(C)` structs, each of which has the `u8` discriminant as its first
 		// field, so we can read the discriminant without offsetting the pointer.
 		unsafe { *<*const _>::from(self).cast::<u8>() }
+	}
+	fn discriminant_max() -> u8 {
+		ERROR_MAX
 	}
 }
 
@@ -133,6 +140,9 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 			5 => RX_ADDR_P5,
 			_ => return Err(Error::PipeInvalid),
 		};
+		if addr.len() == 0 {
+			return Err(Error::AddrTooShort);
+		}
 		if pipe <= 1 {
 			if addr.len() > 5 {
 				return Err(Error::AddrTooLong);
@@ -265,12 +275,12 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 	/// - Config (masking IRQ flags, CRC, CRCO)
 	/// - EN_AA (enabling auto-acknowledgement)
 	/// - EN_RXADDR (enabling data pipes for RX)
+	/// - DYNPD (enable dynamic payloads for pipes)
 	/// - SETUP_AW (setup of address widths)
 	/// - SETUP_RETR (ard [retransmission delay], arc [retransmission count])
 	/// - RF_CH (rf channel)
 	/// - RF_SETUP (data rate, rf power)
 	/// - RX/TX_addr (addresses) & RX_PW (static # bytes in pipes)
-	/// - DYNPD (enable dynamic payloads for pipes)
 	/// - Feature
 	/// 	- enable dynamic payloads
 	/// 	- enable ack payloads
@@ -282,13 +292,14 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 		// Won't mask any flags
 		self.write_register(config)?;
 
-		// en_aa is already set to true on all pipes, but we'll set it anyways
-		self.write_register(EnAa::from_bools(&[true, false, false, false, false, false]))?;
+		const PIPES:[bool;6] = [true, false, false, false, false, false];
 
+		// en_aa is already set to true on all pipes, but we'll set it anyways
+		self.write_register(EnAa::from_bools(&PIPES))?;
 		// only enable first pipe
-		self.write_register(EnRxaddr::from_bools(&[
-			true, false, false, false, false, false,
-		]))?;
+		self.write_register(EnRxaddr::from_bools(&PIPES))?;
+		// Enable dynamic payloads on first pipe
+		self.write_register(Dynpd::from_bools(&PIPES))?;
 
 		let mut setup_aw = SetupAw::default();
 		setup_aw.set_aw(0b11); // 5 byte addresses
@@ -312,10 +323,7 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 		// We won't set addresses or static number of bytes as defaults are ok
 		// either way application should modify rx_addr and tx_addr themselves
 
-		// Enable dynamic payloads on first pipe
-		self.write_register(Dynpd::from_bools(&[
-			true, false, false, false, false, false,
-		]))?;
+		
 
 		let mut feature = Feature::default();
 		feature.set_en_dpl(true); // Enable dynamic payloads

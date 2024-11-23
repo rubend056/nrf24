@@ -7,6 +7,7 @@ edition = "2021"
 bitfield = "0.17.0"
 embedded-hal = "1.0.0"
 embedded-hal-bus = "0.1.0"
+errors = {path = "../errors"}
 nb.workspace = true
 
 [features]
