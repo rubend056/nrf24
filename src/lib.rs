@@ -62,7 +62,8 @@ const CHECK_FIFO_OVERFLOW: bool = true;
 
 pub struct NRF24L01<SPI, CE> {
 	ce: CE,
-	spi: SPI,
+	// pub so we can read reg values in samn HQ
+	pub spi: SPI,
 	config: Config,
 }
 
