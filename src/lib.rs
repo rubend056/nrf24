@@ -141,7 +141,7 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 			5 => RX_ADDR_P5,
 			_ => return Err(Error::PipeInvalid),
 		};
-		if addr.len() == 0 {
+		if addr.is_empty() {
 			return Err(Error::AddrTooShort);
 		}
 		if pipe <= 1 {
@@ -204,12 +204,12 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 	}
 
 
-	/// Is an in-band RF signal detected?
-	///
-	/// The internal carrier detect signal must be high for 40μs
-	/// (NRF24L01+) or 128μs (NRF24L01) before the carrier detect
-	/// register is set. Note that changing from standby to receive
-	/// mode also takes 130μs.
+	// /// Is an in-band RF signal detected?
+	// ///
+	// /// The internal carrier detect signal must be high for 40μs
+	// /// (NRF24L01+) or 128μs (NRF24L01) before the carrier detect
+	// /// register is set. Note that changing from standby to receive
+	// /// mode also takes 130μs.
 	// fn has_carrier(&mut self) -> Result<bool, Error<SPI::Error, CE::Error>> {
 	// 	self.read_register::<RPD>().map(|(_, rpd)| rpd.rpd())
 	// }
@@ -270,6 +270,8 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 	}
 }
 
+type MaybePayload = Option<(u8, [u8; 32])>;
+
 impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 	/// All the things we can configure are:
 	///
@@ -283,9 +285,9 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 	/// - RF_SETUP (data rate, rf power)
 	/// - RX/TX_addr (addresses) & RX_PW (static # bytes in pipes)
 	/// - Feature
-	/// 	- enable dynamic payloads
-	/// 	- enable ack payloads
-	/// 	- enable dynamic ack (just enables the writing of a payloads with no ack apparently)
+	///     - enable dynamic payloads
+	///     - enable ack payloads
+	///     - enable dynamic ack (just enables the writing of a payloads with no ack apparently)
 	pub fn configure(&mut self) -> Result<(), Error<SPI::Error, CE::Error>> {
 		let mut config = Config::default();
 		// Set crc of 2 bytes
@@ -293,7 +295,7 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 		// Won't mask any flags
 		self.write_register(config)?;
 
-		const PIPES:[bool;6] = [true, false, false, false, false, false];
+		const PIPES: [bool; 6] = [true, false, false, false, false, false];
 
 		// en_aa is already set to true on all pipes, but we'll set it anyways
 		self.write_register(EnAa::from_bools(&PIPES))?;
@@ -324,7 +326,6 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 		// We won't set addresses or static number of bytes as defaults are ok
 		// either way application should modify rx_addr and tx_addr themselves
 
-		
 
 		let mut feature = Feature::default();
 		feature.set_en_dpl(true); // Enable dynamic payloads
@@ -422,9 +423,7 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 	/// This function will clear rx interrupt flags when no payload is available.
 	///
 	/// Returns Option<(pipe_number, payload)>
-	pub fn receive_maybe(
-		&mut self,
-	) -> Result<Option<(u8, [u8; 32])>, Error<SPI::Error, CE::Error>> {
+	pub fn receive_maybe(&mut self) -> Result<MaybePayload, Error<SPI::Error, CE::Error>> {
 		if !self.config.prim_rx() {
 			return Err(Error::NotInRxMode);
 		}

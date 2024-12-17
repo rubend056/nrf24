@@ -54,7 +54,7 @@ macro_rules! register {
 
 		impl Clone for $name {
 			fn clone(&self) -> Self {
-				$name(self.0)
+				*self
 			}
 		}
 		impl Copy for $name {}
@@ -93,7 +93,7 @@ macro_rules! pipes_accessors {
 				register
 			}
 
-			pub fn to_bools(&self) -> [bool; PIPES_COUNT] {
+			pub fn to_bools(self) -> [bool; PIPES_COUNT] {
 				let mut bools = [true; PIPES_COUNT];
 				for (i, b) in bools.iter_mut().enumerate() {
 					*b = self.$getter(i);
