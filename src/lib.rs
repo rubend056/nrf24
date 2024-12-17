@@ -183,9 +183,9 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 	pub fn flush_tx(&mut self) -> Result<(), Error<SPI::Error, CE::Error>> {
 		Ok(self.spi.write(&[FLUX_TX])?)
 	}
-	fn reuse_tx_payload(&mut self) -> Result<(), Error<SPI::Error, CE::Error>> {
-		Ok(self.spi.write(&[REUSE_TX_PL])?)
-	}
+	// fn reuse_tx_payload(&mut self) -> Result<(), Error<SPI::Error, CE::Error>> {
+	// 	Ok(self.spi.write(&[REUSE_TX_PL])?)
+	// }
 	/// Sends a No Operation command, just reads Status register
 	fn nop(&mut self) -> Result<Status, Error<SPI::Error, CE::Error>> {
 		let mut buf = [NOP];
@@ -210,9 +210,9 @@ impl<SPI: SpiDevice<u8>, CE: OutputPin> NRF24L01<SPI, CE> {
 	/// (NRF24L01+) or 128μs (NRF24L01) before the carrier detect
 	/// register is set. Note that changing from standby to receive
 	/// mode also takes 130μs.
-	fn has_carrier(&mut self) -> Result<bool, Error<SPI::Error, CE::Error>> {
-		self.read_register::<RPD>().map(|(_, rpd)| rpd.rpd())
-	}
+	// fn has_carrier(&mut self) -> Result<bool, Error<SPI::Error, CE::Error>> {
+	// 	self.read_register::<RPD>().map(|(_, rpd)| rpd.rpd())
+	// }
 
 
 	fn clear_interrupts(&mut self, flags: u8) -> Result<(), Error<SPI::Error, CE::Error>> {
